@@ -4,14 +4,24 @@ import fitz
 import textual_image.widget as timg
 from PIL import Image as PILImage
 from textual import events
-from textual.app import App, ComposeResult
-from textual.binding import Binding
+from textual.app import ComposeResult
 from textual.containers import Container
 from textual.reactive import var
 
 
 class PDFViewer(Container):
     """A PDF viewer widget."""
+
+    CSS = """
+    Container {
+        height: 1fr;
+        width: auto;
+        Image {
+            width: auto;
+            height: auto;
+        }
+    }
+    """
 
     current_page: var[int] = var(0)
 
@@ -113,25 +123,3 @@ class PDFViewer(Container):
         """Go to the last page."""
         if self.doc:
             self.current_page = self.doc.page_count - 1
-
-
-class PDFApp(App):
-    """A simple app to display a PDF file."""
-
-    CSS = """
-    Image {
-        width: auto;
-        height: auto;
-    }
-    """
-
-    BINDINGS = [Binding("q", "quit", "Quit")]
-
-    def compose(self) -> ComposeResult:
-        # yield SixelImage("test_image.png")
-        yield PDFViewer("textual_docs.pdf", renderable="Sixel")
-
-
-if __name__ == "__main__":
-    app = PDFApp()
-    app.run()
