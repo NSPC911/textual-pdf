@@ -6,7 +6,7 @@ from textual.app import App, ComposeResult
 from textual.containers import HorizontalGroup, VerticalGroup
 from textual.widgets import Button, Footer, Input, Label
 
-from .viewer import PDFViewer
+from textual_pdf_view.pdf_viewer import PDFViewer
 
 
 class PDFTestApp(App):
@@ -160,11 +160,11 @@ class PDFTestApp(App):
                 event.stop()
                 self.pdf_viewer.previous_page()
                 self.fix_buttons()
-            case "home":
+            case "home" | "g":
                 event.stop()
                 self.pdf_viewer.go_to_start()
                 self.fix_buttons()
-            case "end":
+            case "end" | "G":
                 event.stop()
                 self.pdf_viewer.go_to_end()
                 self.fix_buttons()
