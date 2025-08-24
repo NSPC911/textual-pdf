@@ -9,7 +9,7 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from textual.reactive import reactive
 
-from textual_pdf_view.exceptions import NotAPDFError, PDFRuntimeError
+from textual_pdf.exceptions import NotAPDFError, PDFRuntimeError
 
 
 class PDFViewer(Container):
@@ -35,7 +35,12 @@ class PDFViewer(Container):
     """Path to a pdf file"""
 
     def __init__(
-        self, path: str | Path, protocol: str = "Auto", name: str | None = None, id: str | None = None, classes: str | None = None,
+        self,
+        path: str | Path,
+        protocol: str = "Auto",
+        name: str | None = None,
+        id: str | None = None,
+        classes: str | None = None,
     ) -> None:
         """Initialize the PDFViewer widget
 
@@ -60,7 +65,9 @@ class PDFViewer(Container):
         try:
             self.doc = fitz.open(self.path)
         except (FileDataError, EmptyFileError):
-            raise NotAPDFError(f"{self.path} does not point to a valid PDF file") from None
+            raise NotAPDFError(
+                f"{self.path} does not point to a valid PDF file"
+            ) from None
         self.render_page()
         self.can_focus = True
 
@@ -71,9 +78,9 @@ class PDFViewer(Container):
 
     def compose(self) -> ComposeResult:
         """Compose the widget"""  # noqa: DOC402
-        yield timg.__dict__[self.protocol + "Image" if self.protocol != "Auto" else "Image"](
-            PILImage.new("RGB", (self.size.width, self.size.height)), id="pdf-image"
-        )
+        yield timg.__dict__[
+            self.protocol + "Image" if self.protocol != "Auto" else "Image"
+        ](PILImage.new("RGB", (self.size.width, self.size.height)), id="pdf-image")
 
     def _render_current_page_pil(self) -> PILImage.Image:
         """Renders the current page and returns a PIL image.
@@ -104,7 +111,9 @@ class PDFViewer(Container):
             PDFRuntimeError: when a document isn't opened before this function was called, by any means
         """
         if not self.doc:
-            raise PDFRuntimeError("`render_page` was called before a document was opened.")
+            raise PDFRuntimeError(
+                "`render_page` was called before a document was opened."
+            )
 
         image_widget: timg.Image = self.query_one("#pdf-image")
         image_widget.image = self._render_current_page_pil()

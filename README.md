@@ -1,4 +1,4 @@
-# Textual PDF View
+# Textual PDF
 
 A Textual widget for viewing PDF files.
 
@@ -18,7 +18,7 @@ Here is a simple example of how to use the `PDFViewer` widget in your Textual ap
 
 ```python
 from textual.app import App, ComposeResult
-from textual_pdf_view.pdf_viewer import PDFViewer
+from textual_pdf.pdf_viewer import PDFViewer
 
 class PDFApp(App):
     def compose(self) -> ComposeResult:

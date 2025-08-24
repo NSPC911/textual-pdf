@@ -4,7 +4,7 @@ from textual.app import App, ComposeResult
 from textual.containers import HorizontalGroup, VerticalGroup
 from textual.widgets import Button, Footer, Input, Label
 
-from textual_pdf_view.pdf_viewer import PDFViewer
+from textual_pdf.pdf_viewer import PDFViewer
 
 
 class PDFTestApp(App):
