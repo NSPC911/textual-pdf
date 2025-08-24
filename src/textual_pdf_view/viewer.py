@@ -6,8 +6,7 @@ from PIL import Image as PILImage
 from textual import events
 from textual.app import ComposeResult
 from textual.containers import Container
-from textual.dom import NoScreen
-from textual.reactive import var
+from textual.reactive import reactive
 
 
 class PDFViewer(Container):
@@ -15,7 +14,6 @@ class PDFViewer(Container):
 
     DEFAULT_CSS = """
     PDFViewer {
-        margin-top: 1;
         height: 1fr;
         width: 1fr;
         Image {
@@ -26,7 +24,9 @@ class PDFViewer(Container):
     }
     """
 
-    current_page: var[int] = var(0)
+    current_page: reactive[int] = reactive(0)
+    renderable: reactive[int] = ""
+    path: reactive[str | Path] = ""
 
     def __init__(
         self, path: str | Path, renderable: str = "Auto", *args, **kwargs
@@ -35,7 +35,7 @@ class PDFViewer(Container):
         assert renderable in ["Auto", "TGP", "Sixel", "Halfcell", "Unicode"]
         if renderable == "Auto":
             renderable = ""
-        self.doc: fitz.Document | None = None
+        self._doc: fitz.Document | None = None
         self.renderable = renderable
         self.path = path
         self._cache: dict[int, PILImage.Image] = {}
@@ -45,6 +45,10 @@ class PDFViewer(Container):
         self.doc = fitz.open(self.path)
         self.render_page()
         self.can_focus = True
+
+    @property
+    def total_pages(self) -> None:
+        return self.doc.page_count
 
     def compose(self) -> ComposeResult:
         yield timg.__dict__[self.renderable + "Image"](
@@ -83,14 +87,24 @@ class PDFViewer(Container):
             raise RuntimeError("render_page was called before a document was opened.")
 
         image_widget: timg.Image = self.query_one("#pdf-image")
-        try:
-            image_widget.image = self._render_current_page_pil()
-        except NoScreen:
-            pass
+        image_widget.image = self._render_current_page_pil()
 
     def watch_current_page(self, new_page: int) -> None:
         """Renders the new page when the current_page variable changes."""
         self.render_page()
+
+    def watch_renderable(self, renderable: str) -> None:
+        assert renderable in ["Auto", "TGP", "Sixel", "Halfcell", "Unicode", ""]
+        if renderable == "Auto":
+            renderable = ""
+            self.renderable = renderable
+        else:
+            self.refresh(recompose=True)
+
+    def watch_path(self, path: str | Path) -> None:
+        path = path if isinstance(path, Path) else Path(path)
+        if path.exists():
+            self.render_page()
 
     def on_key(self, event: events.Key) -> None:
         """Handle key presses."""
@@ -110,7 +124,7 @@ class PDFViewer(Container):
 
     def next_page(self) -> None:
         """Go to the next page."""
-        if self.doc and self.current_page < self.doc.page_count - 1:
+        if self.doc and self.current_page < self.total_pages - 1:
             self.current_page += 1
 
     def previous_page(self) -> None:
@@ -126,4 +140,4 @@ class PDFViewer(Container):
     def go_to_end(self) -> None:
         """Go to the last page."""
         if self.doc:
-            self.current_page = self.doc.page_count - 1
+            self.current_page = self.total_pages - 1
