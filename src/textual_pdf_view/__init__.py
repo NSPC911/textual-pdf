@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import click
 from textual import events
 from textual.app import App, ComposeResult
@@ -80,7 +78,7 @@ class PDFTestApp(App):
     BINDINGS = [
         ("left", "key_event('prev')", "Previous Page"),
         ("right", "key_event('next')", "Next Page"),
-        ("ctrl+q", "quit", "Quit")
+        ("ctrl+q", "quit", "Quit"),
     ]
 
     ENABLE_COMMAND_PALETTE = False
@@ -91,22 +89,16 @@ class PDFTestApp(App):
         self.render_with = render_with
 
     def compose(self) -> ComposeResult:
-        pdf_path = Path(self.pdf_path)
-        if pdf_path.exists():
-            with VerticalGroup():
-                yield PDFViewer(pdf_path, renderable=self.render_with)
-                with HorizontalGroup():
-                    yield Label(id="empty_focusable")
-                    yield Button("<", id="prev")
-                    yield Input("1", id="current", compact=True)
-                    yield Label("/ ")
-                    yield Label("0", id="total")
-                    yield Button(">", id="next")
-            yield Footer()
-        else:
-            yield Label(
-                f"PDF file not found. Please create a file named {self.pdf_path} or provide a valid path."
-            )
+        with VerticalGroup():
+            yield PDFViewer(self.pdf_path, protocol=self.render_with)
+            with HorizontalGroup():
+                yield Label(id="empty_focusable")
+                yield Button("<", id="prev")
+                yield Input("1", id="current", compact=True)
+                yield Label("/ ")
+                yield Label("0", id="total")
+                yield Button(">", id="next")
+        yield Footer()
 
     def on_mount(self) -> None:
         self.pdf_viewer: PDFViewer = self.query_one(PDFViewer)

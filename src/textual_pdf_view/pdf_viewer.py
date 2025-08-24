@@ -3,10 +3,13 @@ from pathlib import Path
 import fitz
 import textual_image.widget as timg
 from PIL import Image as PILImage
+from pymupdf import EmptyFileError, FileDataError
 from textual import events
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.reactive import reactive
+
+from textual_pdf_view.exceptions import NotAPDFError, PDFRuntimeError
 
 
 class PDFViewer(Container):
@@ -25,33 +28,50 @@ class PDFViewer(Container):
     """
 
     current_page: reactive[int] = reactive(0)
-    renderable: reactive[int] = ""
+    """The current page in the PDF file. Starts from `0` until `total_pages - 1`"""
+    protocol: reactive[int] = ""
+    """Protocol to use ["Auto", "TGP", "Sixel", "Halfcell", "Unicode"]"""
     path: reactive[str | Path] = ""
+    """Path to a pdf file"""
 
     def __init__(
-        self, path: str | Path, renderable: str = "Auto", *args, **kwargs
+        self, path: str | Path, protocol: str = "Auto", name: str | None = None, id: str | None = None, classes: str | None = None,
     ) -> None:
-        super().__init__(*args, **kwargs)
-        assert renderable in ["Auto", "TGP", "Sixel", "Halfcell", "Unicode"]
-        if renderable == "Auto":
-            renderable = ""
+        """Initialize the PDFViewer widget
+
+        Args:
+            path(str): Path to a PDF file.
+            name(str): The name of this widget.
+            id(str): The ID of the widget in the DOM.
+            classes(str): The CSS classes for this widget.
+        """
+        super().__init__(name=name, id=id, classes=classes, disabled=False, markup=True)
+        assert protocol in ["Auto", "TGP", "Sixel", "Halfcell", "Unicode"]
         self._doc: fitz.Document | None = None
-        self.renderable = renderable
+        self.protocol = protocol
         self.path = path
         self._cache: dict[int, PILImage.Image] = {}
 
     def on_mount(self) -> None:
-        """Load the PDF when the widget is mounted."""
-        self.doc = fitz.open(self.path)
+        """Load the PDF when the widget is mounted.
+        Raises:
+            NotAPDFError: When the pdf is not accurate at all
+        """
+        try:
+            self.doc = fitz.open(self.path)
+        except (FileDataError, EmptyFileError):
+            raise NotAPDFError(f"{self.path} does not point to a valid PDF file") from None
         self.render_page()
         self.can_focus = True
 
     @property
     def total_pages(self) -> None:
+        """The total number of pages in the currently open file"""
         return self.doc.page_count
 
     def compose(self) -> ComposeResult:
-        yield timg.__dict__[self.renderable + "Image"](
+        """Compose the widget"""  # noqa: DOC402
+        yield timg.__dict__[self.protocol + "Image" if self.protocol != "Auto" else "Image"](
             PILImage.new("RGB", (self.size.width, self.size.height)), id="pdf-image"
         )
 
@@ -61,11 +81,11 @@ class PDFViewer(Container):
             PIL.Image: a valid PIL image
 
         Raises:
-            RuntimeError: when a document isn't opened before this function was called, by any means
+            PDFRuntimeError: when a document isn't opened before this function was called, by any means
         """
         if not self.doc:
-            raise RuntimeError(
-                "_render_current_page_pil was called before a document was opened."
+            raise PDFRuntimeError(
+                "`_render_current_page_pil` was called before a document was opened."
             )
 
         if self.current_page in self._cache:
@@ -81,33 +101,53 @@ class PDFViewer(Container):
     def render_page(self) -> None:
         """Renders the current page and updates the image widget.
         Raises:
-            RuntimeError: when a document isn't opened before this function was called, by any means
+            PDFRuntimeError: when a document isn't opened before this function was called, by any means
         """
         if not self.doc:
-            raise RuntimeError("render_page was called before a document was opened.")
+            raise PDFRuntimeError("`render_page` was called before a document was opened.")
 
         image_widget: timg.Image = self.query_one("#pdf-image")
         image_widget.image = self._render_current_page_pil()
 
     def watch_current_page(self, new_page: int) -> None:
-        """Renders the new page when the current_page variable changes."""
+        """Change the current page to a different page based on the value provided
+        Args:
+            new_page(int): The page to switch to.
+        """
         self.render_page()
 
-    def watch_renderable(self, renderable: str) -> None:
-        assert renderable in ["Auto", "TGP", "Sixel", "Halfcell", "Unicode", ""]
-        if renderable == "Auto":
-            renderable = ""
-            self.renderable = renderable
+    def watch_protocol(self, protocol: str) -> None:
+        """Change the rendering protocol
+        Args:
+            protocol(str): The protocol to use
+        Raises:
+            AssertionError: When the protocol isn't `Auto`, `TGP`, `Sixel`, `Halfcell` or `Unicode`"""
+        assert protocol in ["Auto", "TGP", "Sixel", "Halfcell", "Unicode"]
+        if protocol == self.protocol:
+            return
         else:
-            self.refresh(recompose=True)
+            self.protocol = protocol
+        self.refresh(recompose=True)
+        self.render_page()
 
     def watch_path(self, path: str | Path) -> None:
+        """Reload the document when it changes
+        Args:
+            path(str|Path): The path to the document
+
+        Raises:
+            FileNotFoundError: When the file cannot be found.
+        """
         path = path if isinstance(path, Path) else Path(path)
         if path.exists():
             self.render_page()
+        else:
+            raise FileNotFoundError(path)
 
     def on_key(self, event: events.Key) -> None:
-        """Handle key presses."""
+        """Handle key presses.
+        Args:
+            event(events.Key): The key event"""
         match event.key:
             case "down" | "page_down" | "right":
                 event.stop()
