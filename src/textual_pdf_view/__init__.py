@@ -24,6 +24,9 @@ class PDFTestApp(App):
                 f"PDF file not found. Please create a file named {self.pdf_path} or provide a valid path."
             )
 
+    def on_mount(self) -> None:
+        self.query_one(PDFViewer).focus()
+
 
 @click.command(help="test appplication for textual-pdf-view")
 @click.argument("filename")

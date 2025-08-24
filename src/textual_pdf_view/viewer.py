@@ -6,28 +6,35 @@ from PIL import Image as PILImage
 from textual import events
 from textual.app import ComposeResult
 from textual.containers import Container
+from textual.dom import NoScreen
 from textual.reactive import var
 
 
 class PDFViewer(Container):
     """A PDF viewer widget."""
 
-    CSS = """
-    Container {
+    DEFAULT_CSS = """
+    PDFViewer {
+        margin-top: 1;
         height: 1fr;
-        width: auto;
+        width: 1fr;
         Image {
             width: auto;
             height: auto;
+            align: center bottom;
         }
     }
     """
 
     current_page: var[int] = var(0)
 
-    def __init__(self, path: str | Path, renderable: str = "Auto", *args, **kwargs) -> None:
+    def __init__(
+        self, path: str | Path, renderable: str = "Auto", *args, **kwargs
+    ) -> None:
         super().__init__(*args, **kwargs)
         assert renderable in ["Auto", "TGP", "Sixel", "Halfcell", "Unicode"]
+        if renderable == "Auto":
+            renderable = ""
         self.doc: fitz.Document | None = None
         self.renderable = renderable
         self.path = path
@@ -53,7 +60,9 @@ class PDFViewer(Container):
             RuntimeError: when a document isn't opened before this function was called, by any means
         """
         if not self.doc:
-            raise RuntimeError("_render_current_page_pil was called before a document was opened.")
+            raise RuntimeError(
+                "_render_current_page_pil was called before a document was opened."
+            )
 
         if self.current_page in self._cache:
             return self._cache[self.current_page]
@@ -74,7 +83,10 @@ class PDFViewer(Container):
             raise RuntimeError("render_page was called before a document was opened.")
 
         image_widget: timg.Image = self.query_one("#pdf-image")
-        image_widget.image = self._render_current_page_pil()
+        try:
+            image_widget.image = self._render_current_page_pil()
+        except NoScreen:
+            pass
 
     def watch_current_page(self, new_page: int) -> None:
         """Renders the new page when the current_page variable changes."""
@@ -84,25 +96,17 @@ class PDFViewer(Container):
         """Handle key presses."""
         match event.key:
             case "down" | "page_down" | "right":
+                event.stop()
                 self.next_page()
-                event.stop()
             case "up" | "page_up" | "left":
+                event.stop()
                 self.previous_page()
-                event.stop()
             case "home":
+                event.stop()
                 self.go_to_start()
-                event.stop()
             case "end":
-                self.go_to_end()
                 event.stop()
-
-    def on_mouse_scroll_down(self, event: events.MouseScrollDown) -> None:
-        self.next_page()
-        event.stop()
-
-    def on_mouse_scroll_up(self, event: events.MouseScrollUp) -> None:
-        self.previous_page()
-        event.stop()
+                self.go_to_end()
 
     def next_page(self) -> None:
         """Go to the next page."""
