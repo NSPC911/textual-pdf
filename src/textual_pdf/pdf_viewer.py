@@ -29,9 +29,9 @@ class PDFViewer(Container):
 
     current_page: reactive[int] = reactive(0)
     """The current page in the PDF file. Starts from `0` until `total_pages - 1`"""
-    protocol: reactive[int] = ""
+    protocol: reactive[str] = reactive("Auto")
     """Protocol to use ["Auto", "TGP", "Sixel", "Halfcell", "Unicode"]"""
-    path: reactive[str | Path] = ""
+    path: reactive[str | Path] = reactive("")
     """Path to a pdf file"""
 
     def __init__(
@@ -132,12 +132,9 @@ class PDFViewer(Container):
         Raises:
             AssertionError: When the protocol isn't `Auto`, `TGP`, `Sixel`, `Halfcell` or `Unicode`"""
         assert protocol in ["Auto", "TGP", "Sixel", "Halfcell", "Unicode"]
-        if protocol == self.protocol:
-            return
-        else:
-            self.protocol = protocol
-        self.refresh(recompose=True)
-        self.render_page()
+        if self.is_mounted:
+            self.refresh(recompose=True)
+            self.render_page()
 
     def watch_path(self, path: str | Path) -> None:
         """Reload the document when it changes
@@ -146,12 +143,19 @@ class PDFViewer(Container):
 
         Raises:
             FileNotFoundError: When the file cannot be found.
+            NotAPDFError: if the file is not a valid PDF.
         """
-        path = path if isinstance(path, Path) else Path(path)
-        if path.exists():
-            self.render_page()
-        else:
-            raise FileNotFoundError(path)
+        if not self.is_mounted:
+            return
+
+        try:
+            self.doc = fitz.open(path)
+            self._cache = {}
+            self.current_page = 0
+        except (FileDataError, EmptyFileError) as e:
+            raise NotAPDFError(f"{path} does not point to a valid PDF file") from e
+
+        self.render_page()
 
     def on_key(self, event: events.Key) -> None:
         """Handle key presses.
