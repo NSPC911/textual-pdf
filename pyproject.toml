@@ -1,6 +1,6 @@
 [project]
 name = "textual-pdf"
-version = "0.1.0"
+version = "0.1.1"
 description = "Display PDF files in textual widgets!"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -21,6 +21,10 @@ classifiers = [
   # "Environment :: Textual", # or even this should be okay
   "Topic :: Utilities",
 ]
+
+[project.urls]
+Issues = "https://github.com/NSPC911/textual-pdf/issues"
+Source = "https://github.com/NSPC911/textual-pdf"
 
 [project.scripts]
 textual-pdf = "textual_pdf:main"
