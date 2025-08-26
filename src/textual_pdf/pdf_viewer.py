@@ -55,7 +55,6 @@ class PDFViewer(Container):
         self._doc: fitz.Document | None = None
         self.protocol = protocol
         self.path = path
-        self._cache: dict[int, PILImage.Image] = {}
 
     def on_mount(self) -> None:
         """Load the PDF when the widget is mounted.
@@ -95,14 +94,10 @@ class PDFViewer(Container):
                 "`_render_current_page_pil` was called before a document was opened."
             )
 
-        if self.current_page in self._cache:
-            return self._cache[self.current_page]
-
         page = self.doc.load_page(self.current_page)
         pix = page.get_pixmap()
         mode = "RGBA" if pix.alpha else "RGB"
         image = PILImage.frombytes(mode, (pix.width, pix.height), pix.samples)
-        self._cache[self.current_page] = image
         return image
 
     def render_page(self) -> None:
@@ -142,7 +137,6 @@ class PDFViewer(Container):
             path(str|Path): The path to the document
 
         Raises:
-            FileNotFoundError: When the file cannot be found.
             NotAPDFError: if the file is not a valid PDF.
         """
         if not self.is_mounted:
@@ -150,7 +144,6 @@ class PDFViewer(Container):
 
         try:
             self.doc = fitz.open(path)
-            self._cache = {}
             self.current_page = 0
         except (FileDataError, EmptyFileError) as e:
             raise NotAPDFError(f"{path} does not point to a valid PDF file") from e
