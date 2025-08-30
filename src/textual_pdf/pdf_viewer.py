@@ -101,7 +101,9 @@ class PDFViewer(Container):
         try:
             page = self.doc.load_page(self.current_page)
         except ValueError:
-            raise PDFHasAPasswordError(f"{self.path} is a document that is encrypted, and cannot be read.") from None
+            raise PDFHasAPasswordError(
+                f"{self.path} is a document that is encrypted, and cannot be read."
+            ) from None
         pix = page.get_pixmap()
         mode = "RGBA" if pix.alpha else "RGB"
         image = PILImage.frombytes(mode, (pix.width, pix.height), pix.samples)

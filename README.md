@@ -43,22 +43,10 @@ PDFViewer("path/to/your/document.pdf", protocol="Auto")
 
 ## CLI
 
-This package also provides a command-line interface to view PDF files directly from your terminal.
-
-```sh
-textual-pdf-view /path/to/your/document.pdf
+`textual-pdf` is available as a CLI tool via `ptf`
 ```
-
-## Key Bindings
-
-| Key                                   | Action              |
-| ------------------------------------- | ------------------- |
-| `Down`, `Right`, `j`, `l`, `PageDown` | Go to next page     |
-| `Up`, `Left`, `k`, `h`, `PageUp`      | Go to previous page |
-| `PageDown`                            | Go to next page     |
-| `PageUp`                              | Go to previous page |
-| `Home`                                | Go to first page    |
-| `End`                                 | Go to last page     |
+uv tool install git+https://github.com/NSPC911/ptf
+```
 
 ## License
 
