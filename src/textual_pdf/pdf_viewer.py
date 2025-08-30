@@ -51,6 +51,10 @@ class PDFViewer(Container):
             name(str): The name of this widget.
             id(str): The ID of the widget in the DOM.
             classes(str): The CSS classes for this widget.
+
+        Raises:
+            PDFHasAPasswordError: When the PDF file is password protected
+            NotAPDFError: When the file is not a valid PDF
         """
         super().__init__(name=name, id=id, classes=classes, disabled=False, markup=True)
         assert protocol in ["Auto", "TGP", "Sixel", "Halfcell", "Unicode"]
@@ -59,6 +63,36 @@ class PDFViewer(Container):
         self.path = path
         self.use_keys = use_keys
 
+        # Pre-check if the PDF is valid and not password protected
+        self._check_pdf_file(path)
+
+    def _check_pdf_file(self, path: str | Path) -> None:
+        """Check if the PDF file is valid and not password protected
+
+        Args:
+            path: Path to the PDF file
+
+        Raises:
+            NotAPDFError: When the file is not a valid PDF
+            PDFHasAPasswordError: When the PDF file is password protected
+        """
+        try:
+            # Try to open the document
+            doc = fitz.open(path)
+
+            # Check if the document is encrypted and requires a password
+            if doc.is_encrypted and doc.needs_pass:
+                doc.close()
+                raise PDFHasAPasswordError(
+                    f"{path} is a document that is encrypted, and cannot be read."
+                )
+
+            # Close the document as we'll reopen it during on_mount
+            doc.close()
+        except (FileDataError, EmptyFileError) as e:
+            # Not a valid PDF
+            raise NotAPDFError(f"{path} does not point to a valid PDF file") from e
+
     def on_mount(self) -> None:
         """Load the PDF when the widget is mounted.
         Raises:
@@ -66,10 +100,8 @@ class PDFViewer(Container):
         """
         try:
             self.doc = fitz.open(self.path)
-        except (FileDataError, EmptyFileError):
-            raise NotAPDFError(
-                f"{self.path} does not point to a valid PDF file"
-            ) from None
+        except (FileDataError, EmptyFileError) as e:
+            raise NotAPDFError(f"{self.path} does not point to a valid PDF file") from e
         self.render_page()
         self.can_focus = True
 
@@ -100,10 +132,11 @@ class PDFViewer(Container):
 
         try:
             page = self.doc.load_page(self.current_page)
-        except ValueError:
+        except ValueError as e:
+            # Preserve the original exception traceback to make it catchable
             raise PDFHasAPasswordError(
                 f"{self.path} is a document that is encrypted, and cannot be read."
-            ) from None
+            ) from e
         pix = page.get_pixmap()
         mode = "RGBA" if pix.alpha else "RGB"
         image = PILImage.frombytes(mode, (pix.width, pix.height), pix.samples)
