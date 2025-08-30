@@ -9,7 +9,7 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from textual.reactive import reactive
 
-from textual_pdf.exceptions import NotAPDFError, PDFRuntimeError
+from textual_pdf.exceptions import NotAPDFError, PDFHasAPasswordError, PDFRuntimeError
 
 
 class PDFViewer(Container):
@@ -91,13 +91,17 @@ class PDFViewer(Container):
 
         Raises:
             PDFRuntimeError: when a document isn't opened before this function was called, by any means
+            PDFHasAPasswordError: when the document has a password
         """
         if not self.doc:
             raise PDFRuntimeError(
                 "`_render_current_page_pil` was called before a document was opened."
             )
 
-        page = self.doc.load_page(self.current_page)
+        try:
+            page = self.doc.load_page(self.current_page)
+        except ValueError:
+            raise PDFHasAPasswordError(f"{self.path} is a document that is encrypted, and cannot be read.") from None
         pix = page.get_pixmap()
         mode = "RGBA" if pix.alpha else "RGB"
         image = PILImage.frombytes(mode, (pix.width, pix.height), pix.samples)
