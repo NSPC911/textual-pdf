@@ -31,13 +31,15 @@ class PDFViewer(Container):
     """The current page in the PDF file. Starts from `0` until `total_pages - 1`"""
     protocol: reactive[str] = reactive("Auto")
     """Protocol to use ["Auto", "TGP", "Sixel", "Halfcell", "Unicode"]"""
-    path: reactive[str | Path] = reactive("")
+    path: reactive[str | Path] = reactive("")  # ty: ignore[invalid-assignment]
     """Path to a pdf file"""
+    # the type issue isnt really my fault, that was due to textual
 
     def __init__(
         self,
         path: str | Path,
         protocol: str = "Auto",
+        use_keys: bool = True,
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
@@ -55,6 +57,7 @@ class PDFViewer(Container):
         self._doc: fitz.Document | None = None
         self.protocol = protocol
         self.path = path
+        self.use_keys = use_keys
 
     def on_mount(self) -> None:
         """Load the PDF when the widget is mounted.
@@ -110,7 +113,7 @@ class PDFViewer(Container):
                 "`render_page` was called before a document was opened."
             )
 
-        image_widget: timg.Image = self.query_one("#pdf-image")
+        image_widget: timg.Image = self.query_one("#pdf-image")  # ty: ignore[invalid-type-form]
         image_widget.image = self._render_current_page_pil()
 
     def watch_current_page(self, new_page: int) -> None:
@@ -154,6 +157,8 @@ class PDFViewer(Container):
         """Handle key presses.
         Args:
             event(events.Key): The key event"""
+        if not self.use_keys:
+            return
         match event.key:
             case "down" | "page_down" | "right":
                 event.stop()
